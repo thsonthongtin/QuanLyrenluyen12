@@ -1,0 +1,288 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý rèn luyện học viên</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+header {
+  background: #155e75;
+  color: white;
+  padding: 24px;
+}
+header h1 { margin: 0 0 8px; }
+main {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+  gap: 16px;
+}
+.card, section {
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px #0000000d;
+}
+.number {
+  font-size: 28px;
+  font-weight: bold;
+  color: #0e7490;
+}
+input, button {
+  padding: 10px;
+  margin: 4px 2px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+button {
+  background: #0e7490;
+  color: white;
+  cursor: pointer;
+  border: none;
+}
+button:hover { background: #155e75; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+th { background: #ecfeff; }
+.table-wrap { overflow-x: auto; }
+.note { color: #64748b; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>QUẢN LÝ RÈN LUYỆN HỌC VIÊN</h1>
+  <div>Hệ thống theo dõi và đánh giá rèn luyện</div>
+  <div>Năm học: 2026–2027</div>
+</header>
+
+<main>
+  <div class="cards">
+    <div class="card">
+      Tổng số học viên
+      <div class="number" id="total">0</div>
+    </div>
+    <div class="card">
+      Số lượt vi phạm
+      <div class="number" id="violations">0</div>
+    </div>
+    <div class="card">
+      Điểm trung bình
+      <div class="number" id="average">100</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>1. Thêm học viên</h2>
+    <form id="studentForm">
+      <input id="studentId" placeholder="Mã học viên" required>
+      <input id="studentName" placeholder="Họ và tên" required>
+      <input id="studentClass" placeholder="Lớp" value="11A1" required>
+      <button type="submit">Thêm học viên</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>2. Ghi nhận vi phạm</h2>
+    <form id="violationForm">
+      <select id="studentSelect" required>
+        <option value="">Chọn học viên</option>
+      </select>
+      <input id="violationContent"
+        placeholder="Nội dung vi phạm" required>
+      <input id="deduction" type="number"
+        min="0" max="100" value="5" required>
+      <button type="submit">Lưu vi phạm</button>
+    </form>
+    <p class="note">
+      Điểm hiện tại được tính thử nghiệm từ 100 điểm
+      trừ tổng mức điểm vi phạm.
+    </p>
+  </section>
+
+  <section>
+    <h2>3. Danh sách học viên</h2>
+    <input id="search" placeholder="Tìm theo tên hoặc mã học viên">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mã</th>
+            <th>Họ và tên</th>
+            <th>Lớp</th>
+            <th>Điểm thử nghiệm</th>
+          </tr>
+        </thead>
+        <tbody id="studentTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Lịch sử vi phạm</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Học viên</th>
+            <th>Nội dung</th>
+            <th>Điểm trừ</th>
+          </tr>
+        </thead>
+        <tbody id="violationTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="note">
+    Phiên bản thử nghiệm lưu dữ liệu trong trình duyệt
+    của máy đang sử dụng. Chưa phải hệ thống lưu trữ
+    trực tuyến hoặc quy tắc xếp loại chính thức.
+  </p>
+</main>
+
+<script>
+const load = key =>
+  JSON.parse(localStorage.getItem(key) || "[]");
+
+let students = load("students");
+let violations = load("violations");
+
+function save() {
+  localStorage.setItem("students", JSON.stringify(students));
+  localStorage.setItem("violations", JSON.stringify(violations));
+  render();
+}
+
+function score(id) {
+  const lost = violations
+    .filter(v => v.studentId === id)
+    .reduce((sum, v) => sum + v.points, 0);
+  return Math.max(0, 100 - lost);
+}
+
+function render() {
+  const query = document.getElementById("search")
+    .value.toLowerCase();
+
+  document.getElementById("total").textContent =
+    students.length;
+
+  document.getElementById("violations").textContent =
+    violations.length;
+
+  const avg = students.length
+    ? students.reduce((s, p) => s + score(p.id), 0)
+      / students.length
+    : 100;
+
+  document.getElementById("average").textContent =
+    avg.toFixed(1);
+
+  document.getElementById("studentTable").innerHTML =
+    students
+      .filter(p => (p.name + p.id + p.className)
+        .toLowerCase().includes(query))
+      .map(p => `<tr>
+        <td>${escapeHTML(p.id)}</td>
+        <td>${escapeHTML(p.name)}</td>
+        <td>${escapeHTML(p.className)}</td>
+        <td>${score(p.id)}</td>
+      </tr>`).join("");
+
+  document.getElementById("studentSelect").innerHTML =
+    '<option value="">Chọn học viên</option>' +
+    students.map(p =>
+      `<option value="${escapeHTML(p.id)}">${
+        escapeHTML(p.name)
+      } — ${escapeHTML(p.className)}</option>`
+    ).join("");
+
+  document.getElementById("violationTable").innerHTML =
+    violations.map(v => {
+      const p = students.find(p => p.id === v.studentId);
+      return `<tr>
+        <td>${escapeHTML(p ? p.name : v.studentId)}</td>
+        <td>${escapeHTML(v.content)}</td>
+        <td>${v.points}</td>
+      </tr>`;
+    }).join("");
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+document.getElementById("studentForm")
+  .addEventListener("submit", e => {
+    e.preventDefault();
+
+    const id = document.getElementById("studentId")
+      .value.trim();
+    const name = document.getElementById("studentName")
+      .value.trim();
+    const className = document.getElementById("studentClass")
+      .value.trim();
+
+    if (students.some(p => p.id === id)) {
+      alert("Mã học viên đã tồn tại!");
+      return;
+    }
+
+    students.push({ id, name, className });
+    e.target.reset();
+    document.getElementById("studentClass").value = "11A1";
+    save();
+  });
+
+document.getElementById("violationForm")
+  .addEventListener("submit", e => {
+    e.preventDefault();
+
+    const studentId =
+      document.getElementById("studentSelect").value;
+    const content =
+      document.getElementById("violationContent").value.trim();
+    const points =
+      Number(document.getElementById("deduction").value);
+
+    if (!studentId || !content || points < 0 || points > 100) {
+      alert("Vui lòng kiểm tra thông tin!");
+      return;
+    }
+
+    violations.push({ studentId, content, points });
+    e.target.reset();
+    document.getElementById("deduction").value = 5;
+    save();
+  });
+
+document.getElementById("search")
+  .addEventListener("input", render);
+
+render();
+</script>
+</body>
+</html>
